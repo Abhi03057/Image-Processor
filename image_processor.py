@@ -1,8 +1,6 @@
-print("App started")
 import cv2
-import pytesseract
-from tkinter import filedialog, Tk, Button, Label
-from PIL import Image, ImageTk, ImageEnhance
+import numpy as np
+from PIL import Image, ImageEnhance
 
 class ImageProcessor:
     @staticmethod

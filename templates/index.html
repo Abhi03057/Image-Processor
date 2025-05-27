@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Processing App</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 2rem;
+        }
+
+        .upload-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .upload-btn {
+            background: #3498db;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .upload-btn:hover {
+            background: #2980b9;
+        }
+
+        .image-container {
+            display: flex;
+            gap: 2rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .image-box {
+            flex: 1;
+            min-width: 300px;
+            max-width: 500px;
+            background: white;
+            padding: 1rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .image-box img {
+            width: 100%;
+            height: auto;
+            border-radius: 5px;
+        }
+
+        .image-box h3 {
+            margin: 1rem 0;
+            color: #2c3e50;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 1rem 0;
+        }
+
+        .control-btn {
+            background: #2ecc71;
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .control-btn:hover {
+            background: #27ae60;
+        }
+
+        .restore-btn {
+            background: #e74c3c;
+        }
+
+        .restore-btn:hover {
+            background: #c0392b;
+        }
+
+        .text-output {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 5px;
+            min-height: 100px;
+            white-space: pre-wrap;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 1rem 0;
+        }
+
+        .loading::after {
+            content: "Processing...";
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Image Processing App</h1>
+        
+        <div class="upload-section">
+            <input type="file" id="imageInput" accept="image/*" style="display: none;">
+            <button class="upload-btn" onclick="document.getElementById('imageInput').click()">
+                Upload Image
+            </button>
+        </div>
+
+        <div class="image-container">
+            <div class="image-box">
+                <h3>Original Image</h3>
+                <img id="originalImage" src="#" alt="Upload an image" style="display: none;">
+            </div>
+            <div class="image-box">
+                <h3>Processed Image</h3>
+                <img id="processedImage" src="#" alt="Processed image will appear here" style="display: none;">
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="control-btn" onclick="processImage('grayscale')">Convert to Grayscale</button>
+            <button class="control-btn" onclick="processImage('warm')">Add Warm Tone</button>
+            <button class="control-btn" onclick="processImage('sharp')">Enhance Sharpness</button>
+            <button class="control-btn" onclick="processImage('ocr')">Extract Text</button>
+            <button class="control-btn restore-btn" onclick="restoreOriginal()">Restore Original</button>
+        </div>
+
+        <div class="text-output" id="textOutput"></div>
+        <div class="loading" id="loading"></div>
+    </div>
+
+    <script>
+        let originalImageData = null;
+        let currentImageData = null;
+
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    originalImageData = e.target.result;
+                    currentImageData = originalImageData;
+                    document.getElementById('originalImage').src = originalImageData;
+                    document.getElementById('originalImage').style.display = 'block';
+                    document.getElementById('processedImage').style.display = 'none';
+                    document.getElementById('textOutput').textContent = '';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function processImage(action) {
+            if (!currentImageData) {
+                alert('Please upload an image first');
+                return;
+            }
+
+            showLoading();
+
+            fetch('/process_image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    image: currentImageData,
+                    action: action
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                if (data.text) {
+                    document.getElementById('textOutput').textContent = data.text;
+                } else {
+                    currentImageData = data.processed_image;
+                    document.getElementById('processedImage').src = currentImageData;
+                    document.getElementById('processedImage').style.display = 'block';
+                }
+            })
+            .catch(error => {
+                alert('Error: ' + error.message);
+            })
+            .finally(() => {
+                hideLoading();
+            });
+        }
+
+        function restoreOriginal() {
+            if (originalImageData) {
+                currentImageData = originalImageData;
+                document.getElementById('processedImage').src = originalImageData;
+                document.getElementById('processedImage').style.display = 'block';
+                document.getElementById('textOutput').textContent = '';
+            }
+        }
+    </script>
+</body>
+</html> 
