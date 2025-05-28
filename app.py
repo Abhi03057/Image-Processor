@@ -1,11 +1,10 @@
 import os
 from flask import Flask, render_template, request, jsonify, send_file
-from PIL import Image
-import io
-import base64
+from werkzeug.utils import secure_filename
 import logging
-from image_processor import ImageProcessor
-from ocr_handler import OCRHandler
+from utils.image_processor import ImageProcessor
+from utils.text_processor import TextProcessor
+from utils.ai_processor import AIProcessor
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -14,100 +13,136 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.secret_key = os.urandom(24)
 
 # Ensure upload directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
+# Initialize processors
 image_processor = ImageProcessor()
-ocr_handler = OCRHandler()
+text_processor = TextProcessor()
+ai_processor = AIProcessor()
 
-def save_image(image_data):
-    """Save the image data and return the filename"""
-    try:
-        if not image_data:
-            logger.error("No image data provided")
-            return None
-        
-        # Remove header of base64 string if present
-        if 'base64,' in image_data:
-            image_data = image_data.split('base64,')[1]
-        
-        image_bytes = base64.b64decode(image_data)
-        image = Image.open(io.BytesIO(image_bytes))
-        
-        # Generate unique filename
-        filename = f"image_{os.urandom(8).hex()}.png"
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        
-        # Ensure image is in RGB mode before saving
-        if image.mode != 'RGB':
-            image = image.convert('RGB')
-        
-        image.save(filepath)
-        logger.debug(f"Image saved successfully as {filename}")
-        return filename
-    except Exception as e:
-        logger.error(f"Error saving image: {str(e)}")
-        return None
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'tiff'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/process_image', methods=['POST'])
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
+        
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            return jsonify({
+                'success': True,
+                'filename': filename,
+                'filepath': f'/static/uploads/{filename}'
+            })
+        
+        return jsonify({'error': 'Invalid file type'}), 400
+    
+    except Exception as e:
+        logger.error(f"Error in upload: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/process', methods=['POST'])
 def process_image():
     try:
         data = request.get_json()
         if not data:
-            logger.error("No JSON data received")
             return jsonify({'error': 'No data received'}), 400
 
-        image_data = data.get('image')
+        filename = data.get('filename')
         action = data.get('action')
+        params = data.get('params', {})
+
+        if not filename or not action:
+            return jsonify({'error': 'Missing filename or action'}), 400
+
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         
-        logger.debug(f"Processing image with action: {action}")
-        
-        if not image_data or not action:
-            logger.error("Missing image data or action")
-            return jsonify({'error': 'Missing image data or action'}), 400
-
-        # Save the uploaded image
-        filename = save_image(image_data)
-        if not filename:
-            logger.error("Failed to save image")
-            return jsonify({'error': 'Failed to save image'}), 400
-
-        image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        image = Image.open(image_path)
-
-        # Process the image based on the action
-        if action == 'grayscale':
-            processed_image = image_processor.convert_to_grayscale(image)
-        elif action == 'warm':
-            processed_image = image_processor.add_warm_tone(image)
-        elif action == 'sharp':
-            processed_image = image_processor.enhance_sharpness(image)
+        # Process based on action type
+        if action in ['grayscale', 'sepia', 'warm', 'sharp', 'blur', 'edge']:
+            result = image_processor.apply_filter(filepath, action, params)
+        elif action in ['rotate', 'flip', 'crop', 'resize']:
+            result = image_processor.transform_image(filepath, action, params)
         elif action == 'ocr':
-            text = ocr_handler.extract_text(image)
-            return jsonify({'text': text})
+            result = text_processor.extract_text(filepath, params.get('lang', 'eng'))
+        elif action == 'tts':
+            result = text_processor.text_to_speech(params.get('text'), params.get('lang', 'en'))
+        elif action == 'translate':
+            result = text_processor.translate_text(params.get('text'), params.get('target_lang', 'en'))
+        elif action in ['face_detect', 'face_blur', 'remove_bg', 'caption']:
+            result = ai_processor.process_image(filepath, action, params)
         else:
-            logger.error(f"Invalid action: {action}")
             return jsonify({'error': 'Invalid action'}), 400
 
-        # Save and return the processed image
-        output_buffer = io.BytesIO()
-        processed_image.save(output_buffer, format='PNG')
-        processed_image_data = base64.b64encode(output_buffer.getvalue()).decode()
-
-        response_data = {
-            'processed_image': f'data:image/png;base64,{processed_image_data}',
-            'original_image': f'/static/uploads/{filename}'
-        }
-        logger.debug("Image processing completed successfully")
-        return jsonify(response_data)
+        return jsonify(result)
 
     except Exception as e:
-        logger.error(f"Error processing image: {str(e)}")
+        logger.error(f"Error in processing: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/export', methods=['POST'])
+def export_results():
+    try:
+        data = request.get_json()
+        export_type = data.get('type', 'pdf')
+        content = data.get('content', {})
+        
+        if export_type == 'pdf':
+            pdf_path = text_processor.export_to_pdf(content)
+            return send_file(pdf_path, as_attachment=True)
+        else:
+            return jsonify({'error': 'Invalid export type'}), 400
+
+    except Exception as e:
+        logger.error(f"Error in export: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/undo', methods=['POST'])
+def undo_action():
+    try:
+        data = request.get_json()
+        filename = data.get('filename')
+        
+        if not filename:
+            return jsonify({'error': 'No filename provided'}), 400
+            
+        result = image_processor.undo(filename)
+        return jsonify(result)
+
+    except Exception as e:
+        logger.error(f"Error in undo: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/redo', methods=['POST'])
+def redo_action():
+    try:
+        data = request.get_json()
+        filename = data.get('filename')
+        
+        if not filename:
+            return jsonify({'error': 'No filename provided'}), 400
+            
+        result = image_processor.redo(filename)
+        return jsonify(result)
+
+    except Exception as e:
+        logger.error(f"Error in redo: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
