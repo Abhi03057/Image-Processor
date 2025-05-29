@@ -1,551 +1,190 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Image Processing</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #4a90e2;
-            --secondary-color: #2ecc71;
-            --danger-color: #e74c3c;
-            --text-color: #333;
-            --bg-color: #fff;
-            --card-bg: #fff;
-            --border-color: #e1e1e1;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Advanced Image Processing</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
 
-        [data-theme="dark"] {
-            --primary-color: #64b5f6;
-            --secondary-color: #81c784;
-            --danger-color: #e57373;
-            --text-color: #f5f5f5;
-            --bg-color: #121212;
-            --card-bg: #1e1e1e;
-            --border-color: #333;
-        }
+    h1 {
+      color: #333;
+    }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    #dropzone {
+      border: 2px dashed #ccc;
+      border-radius: 10px;
+      padding: 40px;
+      margin: 20px auto;
+      width: 80%;
+      max-width: 500px;
+      background: #fff;
+      cursor: pointer;
+      transition: border-color 0.3s;
+    }
 
-        body {
-            font-family: 'Inter', sans-serif;
-            line-height: 1.6;
-            color: var(--text-color);
-            background-color: var(--bg-color);
-            transition: background-color 0.3s, color 0.3s;
-        }
+    #dropzone:hover {
+      border-color: #4a90e2;
+    }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
+    #dropzone p {
+      margin: 0;
+      color: #666;
+    }
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-        }
+    input[type="file"] {
+      display: none;
+    }
 
-        .theme-toggle {
-            background: none;
-            border: none;
-            color: var(--text-color);
-            cursor: pointer;
-            font-size: 1.5rem;
-        }
+    #preview {
+      margin: 20px 0;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
 
-        .main-content {
-            display: grid;
-            grid-template-columns: 300px 1fr;
-            gap: 2rem;
-        }
+    #preview img {
+      max-width: 300px;
+      max-height: 300px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      display: none;
+    }
 
-        @media (max-width: 768px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
-        }
+    .controls {
+      margin-top: 20px;
+    }
 
-        .sidebar {
-            background: var(--card-bg);
-            padding: 1.5rem;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
+    .controls button {
+      margin: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #4a90e2;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
 
-        .filters-section {
-            margin-bottom: 2rem;
-        }
+    .controls button:hover {
+      background: #357ab8;
+    }
 
-        .filters-section h3 {
-            margin-bottom: 1rem;
-            color: var(--text-color);
-        }
-
-        .filter-group {
-            margin-bottom: 1.5rem;
-        }
-
-        .filter-group h4 {
-            margin-bottom: 0.5rem;
-            color: var(--text-color);
-        }
-
-        .slider-container {
-            margin: 1rem 0;
-        }
-
-        .slider-container label {
-            display: block;
-            margin-bottom: 0.5rem;
-        }
-
-        .slider {
-            width: 100%;
-            margin: 0.5rem 0;
-        }
-
-        .btn {
-            display: block;
-            width: 100%;
-            padding: 0.8rem;
-            margin: 0.5rem 0;
-            border: none;
-            border-radius: 5px;
-            background: var(--primary-color);
-            color: white;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        .btn:hover {
-            opacity: 0.9;
-        }
-
-        .btn-secondary {
-            background: var(--secondary-color);
-        }
-
-        .btn-danger {
-            background: var(--danger-color);
-        }
-
-        .workspace {
-            background: var(--card-bg);
-            padding: 1.5rem;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .image-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .image-box {
-            position: relative;
-            background: var(--bg-color);
-            padding: 1rem;
-            border-radius: 5px;
-            border: 1px solid var(--border-color);
-        }
-
-        .image-box img {
-            width: 100%;
-            height: auto;
-            border-radius: 5px;
-        }
-
-        .image-box h4 {
-            margin: 0.5rem 0;
-            color: var(--text-color);
-        }
-
-        .dropzone {
-            border: 2px dashed var(--border-color);
-            border-radius: 5px;
-            padding: 2rem;
-            text-align: center;
-            cursor: pointer;
-            transition: border-color 0.3s;
-        }
-
-        .dropzone:hover {
-            border-color: var(--primary-color);
-        }
-
-        .text-output {
-            margin-top: 1rem;
-            padding: 1rem;
-            background: var(--bg-color);
-            border: 1px solid var(--border-color);
-            border-radius: 5px;
-            min-height: 100px;
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
-            margin: 1rem 0;
-        }
-
-        .loading::after {
-            content: "Processing...";
-            color: var(--text-color);
-        }
-    </style>
+    #textOutput {
+      margin-top: 20px;
+      padding: 15px;
+      background: #fff;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      width: 80%;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      display: none;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <header class="header">
-            <h1>Advanced Image Processing</h1>
-            <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
-        </header>
+  <h1>🖼️ Advanced Image Processing Web App</h1>
 
-        <main class="main-content">
-            <aside class="sidebar">
-                <div class="filters-section">
-                    <h3>Filters</h3>
-                    <div class="filter-group">
-                        <button class="btn" onclick="applyFilter('grayscale')">Grayscale</button>
-                        <button class="btn" onclick="applyFilter('sepia')">Sepia</button>
-                        <button class="btn" onclick="applyFilter('warm')">Warm Tone</button>
-                    </div>
+  <div id="dropzone">
+    <p>Drag & Drop image here or click to upload</p>
+    <input type="file" id="fileInput" accept="image/*" />
+  </div>
 
-                    <div class="filter-group">
-                        <h4>Adjustments</h4>
-                        <div class="slider-container">
-                            <label for="brightness">Brightness</label>
-                            <input type="range" id="brightness" class="slider" min="0" max="200" value="100">
-                        </div>
-                        <div class="slider-container">
-                            <label for="contrast">Contrast</label>
-                            <input type="range" id="contrast" class="slider" min="0" max="200" value="100">
-                        </div>
-                        <div class="slider-container">
-                            <label for="sharpness">Sharpness</label>
-                            <input type="range" id="sharpness" class="slider" min="0" max="200" value="100">
-                        </div>
-                        <button class="btn" onclick="applyAdjustments()">Apply Adjustments</button>
-                    </div>
+  <div id="preview">
+    <img id="originalImage" alt="Original" />
+    <img id="processedImage" alt="Processed" />
+  </div>
 
-                    <div class="filter-group">
-                        <h4>Effects</h4>
-                        <button class="btn" onclick="applyFilter('blur')">Blur</button>
-                        <button class="btn" onclick="applyFilter('edge')">Edge Detection</button>
-                    </div>
+  <div class="controls">
+    <button onclick="applyOCR()">OCR</button>
+    <button onclick="enhanceImage()">Enhance</button>
+    <button onclick="compressImage()">Compress</button>
+    <button onclick="addWatermark()">Watermark</button>
+    <button onclick="convertToGrayscale()">Grayscale</button>
+    <button onclick="resetImage()">Reset</button>
+  </div>
 
-                    <div class="filter-group">
-                        <h4>Transform</h4>
-                        <button class="btn" onclick="rotateImage()">Rotate 90°</button>
-                        <button class="btn" onclick="flipImage('horizontal')">Flip Horizontal</button>
-                        <button class="btn" onclick="flipImage('vertical')">Flip Vertical</button>
-                    </div>
+  <div id="textOutput"></div>
 
-                    <div class="filter-group">
-                        <h4>AI Features</h4>
-                        <button class="btn btn-secondary" onclick="detectFaces()">Detect Faces</button>
-                        <button class="btn btn-secondary" onclick="blurFaces()">Blur Faces</button>
-                        <button class="btn btn-secondary" onclick="removeBackground()">Remove Background</button>
-                        <button class="btn btn-secondary" onclick="generateCaption()">Generate Caption</button>
-                    </div>
+  <script>
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const originalImg = document.getElementById('originalImage');
+    const processedImg = document.getElementById('processedImage');
+    const textOutput = document.getElementById('textOutput');
+    let originalSrc = '';
 
-                    <div class="filter-group">
-                        <h4>Text Operations</h4>
-                        <button class="btn" onclick="extractText()">Extract Text (OCR)</button>
-                        <button class="btn" onclick="textToSpeech()">Text to Speech</button>
-                        <button class="btn" onclick="translateText()">Translate Text</button>
-                    </div>
-                </div>
+    // Preview image
+    function previewImage(file) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        originalSrc = e.target.result;
+        originalImg.src = e.target.result;
+        processedImg.src = e.target.result;
+        originalImg.style.display = 'block';
+        processedImg.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    }
 
-                <div class="filter-group">
-                    <button class="btn" onclick="undo()">Undo</button>
-                    <button class="btn" onclick="redo()">Redo</button>
-                    <button class="btn btn-danger" onclick="resetImage()">Reset</button>
-                    <button class="btn btn-secondary" onclick="exportPDF()">Export to PDF</button>
-                </div>
-            </aside>
+    // Drag and Drop
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.style.borderColor = '#4a90e2';
+    });
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.style.borderColor = '#ccc';
+    });
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.style.borderColor = '#ccc';
+      const file = e.dataTransfer.files[0];
+      if (file) previewImage(file);
+    });
 
-            <section class="workspace">
-                <div class="dropzone" id="dropzone" ondrop="handleDrop(event)" ondragover="handleDragOver(event)">
-                    <p>Drag and drop an image here or click to upload</p>
-                    <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFileSelect(event)">
-                </div>
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) previewImage(file);
+    });
 
-                <div class="image-container">
-                    <div class="image-box">
-                        <h4>Original Image</h4>
-                        <img id="originalImage" src="#" alt="Upload an image" style="display: none;">
-                    </div>
-                    <div class="image-box">
-                        <h4>Processed Image</h4>
-                        <img id="processedImage" src="#" alt="Processed image will appear here" style="display: none;">
-                    </div>
-                </div>
+    // Placeholder features
+    function applyOCR() {
+      textOutput.style.display = 'block';
+      textOutput.innerText = '🔍 OCR result: (This is a simulated result)';
+    }
 
-                <div class="text-output" id="textOutput"></div>
-                <div class="loading" id="loading"></div>
-            </section>
-        </main>
-    </div>
+    function enhanceImage() {
+      alert('✨ Image enhancement applied (simulated).');
+    }
 
-    <script>
-        // Theme toggle
-        function toggleTheme() {
-            document.body.dataset.theme = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
-        }
+    function compressImage() {
+      alert('📦 Image compressed (simulated).');
+    }
 
-        // File handling
-        function handleDrop(e) {
-            e.preventDefault();
-            const file = e.dataTransfer.files[0];
-            if (file && file.type.startsWith('image/')) {
-                handleFile(file);
-            }
-        }
+    function addWatermark() {
+      alert('💧 Watermark added (simulated).');
+    }
 
-        function handleDragOver(e) {
-            e.preventDefault();
-        }
+    function convertToGrayscale() {
+      processedImg.style.filter = 'grayscale(100%)';
+    }
 
-        function handleFileSelect(e) {
-            const file = e.target.files[0];
-            if (file) {
-                handleFile(file);
-            }
-        }
-
-        function handleFile(file) {
-            const formData = new FormData();
-            formData.append('file', file);
-
-            fetch('/upload', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('originalImage').src = data.filepath;
-                    document.getElementById('originalImage').style.display = 'block';
-                    document.getElementById('processedImage').style.display = 'none';
-                    document.getElementById('textOutput').textContent = '';
-                } else {
-                    alert(data.error);
-                }
-            })
-            .catch(error => alert('Error uploading file: ' + error));
-        }
-
-        // Image processing functions
-        function applyFilter(filter) {
-            processImage('filter', { type: filter });
-        }
-
-        function applyAdjustments() {
-            const params = {
-                brightness: document.getElementById('brightness').value,
-                contrast: document.getElementById('contrast').value,
-                sharpness: document.getElementById('sharpness').value
-            };
-            processImage('adjust', params);
-        }
-
-        function rotateImage() {
-            processImage('rotate', { angle: 90 });
-        }
-
-        function flipImage(direction) {
-            processImage('flip', { direction: direction });
-        }
-
-        function detectFaces() {
-            processImage('face_detect');
-        }
-
-        function blurFaces() {
-            processImage('face_blur');
-        }
-
-        function removeBackground() {
-            processImage('remove_bg');
-        }
-
-        function generateCaption() {
-            processImage('caption');
-        }
-
-        function extractText() {
-            processImage('ocr');
-        }
-
-        function textToSpeech() {
-            const text = document.getElementById('textOutput').textContent;
-            if (text) {
-                processImage('tts', { text: text });
-            } else {
-                alert('Please extract text first');
-            }
-        }
-
-        function translateText() {
-            const text = document.getElementById('textOutput').textContent;
-            if (text) {
-                processImage('translate', { text: text, target_lang: 'es' });
-            } else {
-                alert('Please extract text first');
-            }
-        }
-
-        function processImage(action, params = {}) {
-            const img = document.getElementById('originalImage');
-            if (!img.src) {
-                alert('Please upload an image first');
-                return;
-            }
-
-            document.getElementById('loading').style.display = 'block';
-
-            fetch('/process', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    filename: img.src.split('/').pop(),
-                    action: action,
-                    params: params
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                if (data.text || data.caption) {
-                    document.getElementById('textOutput').textContent = data.text || data.caption;
-                } else if (data.filepath) {
-                    document.getElementById('processedImage').src = data.filepath;
-                    document.getElementById('processedImage').style.display = 'block';
-                }
-            })
-            .catch(error => alert('Error: ' + error.message))
-            .finally(() => {
-                document.getElementById('loading').style.display = 'none';
-            });
-        }
-
-        function undo() {
-            const img = document.getElementById('originalImage');
-            if (!img.src) return;
-
-            fetch('/undo', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    filename: img.src.split('/').pop()
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                if (data.filepath) {
-                    document.getElementById('processedImage').src = data.filepath;
-                    document.getElementById('processedImage').style.display = 'block';
-                }
-            })
-            .catch(error => alert('Error: ' + error.message));
-        }
-
-        function redo() {
-            const img = document.getElementById('originalImage');
-            if (!img.src) return;
-
-            fetch('/redo', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    filename: img.src.split('/').pop()
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                if (data.filepath) {
-                    document.getElementById('processedImage').src = data.filepath;
-                    document.getElementById('processedImage').style.display = 'block';
-                }
-            })
-            .catch(error => alert('Error: ' + error.message));
-        }
-
-        function resetImage() {
-            const img = document.getElementById('originalImage');
-            if (!img.src) return;
-
-            document.getElementById('processedImage').style.display = 'none';
-            document.getElementById('textOutput').textContent = '';
-            document.getElementById('brightness').value = 100;
-            document.getElementById('contrast').value = 100;
-            document.getElementById('sharpness').value = 100;
-        }
-
-        function exportPDF() {
-            const originalImg = document.getElementById('originalImage');
-            const processedImg = document.getElementById('processedImage');
-            const text = document.getElementById('textOutput').textContent;
-
-            if (!originalImg.src) {
-                alert('Please upload an image first');
-                return;
-            }
-
-            fetch('/export', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    type: 'pdf',
-                    content: {
-                        images: [originalImg.src, processedImg.src].filter(src => src),
-                        text: text
-                    }
-                })
-            })
-            .then(response => response.blob())
-            .then(blob => {
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'processed_images.pdf';
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                a.remove();
-            })
-            .catch(error => alert('Error exporting PDF: ' + error));
-        }
-
-        // Initialize dropzone click handler
-        document.getElementById('dropzone').onclick = () => document.getElementById('fileInput').click();
-    </script>
+    function resetImage() {
+      processedImg.src = originalSrc;
+      processedImg.style.filter = 'none';
+      textOutput.style.display = 'none';
+    }
+  </script>
 </body>
-</html> 
+</html>

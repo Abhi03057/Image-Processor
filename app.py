@@ -43,14 +43,29 @@ def upload_file():
             return jsonify({'error': 'No selected file'}), 400
         
         if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
-            return jsonify({
-                'success': True,
-                'filename': filename,
-                'filepath': f'/static/uploads/{filename}'
-            })
+            try:
+                # Ensure upload directory exists with proper permissions
+                os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+                
+                filename = secure_filename(file.filename)
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                
+                # Test if we can write to the directory
+                try:
+                    with open(filepath, 'wb') as f:
+                        file.save(filepath)
+                except (IOError, OSError) as e:
+                    logger.error(f"Failed to save file: {str(e)}")
+                    return jsonify({'error': f'Failed to save file: {str(e)}'}), 500
+                
+                return jsonify({
+                    'success': True,
+                    'filename': filename,
+                    'filepath': f'/static/uploads/{filename}'
+                })
+            except (IOError, OSError) as e:
+                logger.error(f"Failed to create upload directory: {str(e)}")
+                return jsonify({'error': f'Failed to create upload directory: {str(e)}'}), 500
         
         return jsonify({'error': 'Invalid file type'}), 400
     
