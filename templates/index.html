@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Advanced Image Processing</title>
+  <title>Advanced Image Processing Web App</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -89,6 +89,8 @@
       margin-left: auto;
       margin-right: auto;
       display: none;
+      white-space: pre-wrap;
+      text-align: left;
     }
   </style>
 </head>
@@ -114,7 +116,10 @@
     <button onclick="resetImage()">Reset</button>
   </div>
 
-  <div id="textOutput"></div>
+  <div id="textOutput">Extracted text will appear here...</div>
+
+  <!-- Load Tesseract.js -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2/dist/tesseract.min.js"></script>
 
   <script>
     const dropzone = document.getElementById('dropzone');
@@ -123,8 +128,8 @@
     const processedImg = document.getElementById('processedImage');
     const textOutput = document.getElementById('textOutput');
     let originalSrc = '';
+    let imageFile = null;
 
-    // Preview image
     function previewImage(file) {
       const reader = new FileReader();
       reader.onload = function (e) {
@@ -133,11 +138,12 @@
         processedImg.src = e.target.result;
         originalImg.style.display = 'block';
         processedImg.style.display = 'block';
+        textOutput.style.display = 'none';
       };
       reader.readAsDataURL(file);
+      imageFile = file;
     }
 
-    // Drag and Drop
     dropzone.addEventListener('click', () => fileInput.click());
     dropzone.addEventListener('dragover', (e) => {
       e.preventDefault();
@@ -158,10 +164,29 @@
       if (file) previewImage(file);
     });
 
-    // Placeholder features
-    function applyOCR() {
+    async function applyOCR() {
+      if (!imageFile) {
+        alert("Please upload an image first.");
+        return;
+      }
+
       textOutput.style.display = 'block';
-      textOutput.innerText = '🔍 OCR result: (This is a simulated result)';
+      textOutput.innerText = '🕒 Processing OCR...';
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        Tesseract.recognize(
+          e.target.result,
+          'eng',
+          { logger: m => console.log(m) }
+        ).then(({ data: { text } }) => {
+          textOutput.innerText = `📄 OCR Result:\n\n${text}`;
+        }).catch(err => {
+          textOutput.innerText = '❌ OCR failed. Try another image.';
+          console.error(err);
+        });
+      };
+      reader.readAsDataURL(imageFile);
     }
 
     function enhanceImage() {
